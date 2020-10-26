@@ -47,6 +47,9 @@ enum compressionFormat
   UNDEFINED = -1, JPEG, PNG
 };
 
+sensor_msgs::ImagePtr decompressJPEG(const std::vector<uint8_t>& data, const std::string&source_encoding, const std_msgs::Header& header);
+
+
 // standadlone decoding function
 sensor_msgs::ImagePtr decodeCompressedImage(const sensor_msgs::CompressedImageConstPtr& image, int decode_flag);
 
