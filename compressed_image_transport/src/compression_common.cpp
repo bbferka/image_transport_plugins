@@ -37,6 +37,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgcodecs.hpp>
 #include <ros/ros.h>
 #include <turbojpeg.h>
 
@@ -231,17 +232,36 @@ namespace compressed_image_transport {
 
         switch (encode_flag) {
             case JPEG:
-            {          
+            {
                 compressed->format += "; jpeg compressed ";
                 // Check input format
                 if ((bitDepth == 8) || (bitDepth == 16)) {
-                    tjhandle tj_ = tjInitCompress();
+
                     // Target image format
                     std::string targetFormat;
                     if (enc::isColor(message.encoding)) {
                         // convert color images to BGR8 format
                         targetFormat = "bgr8";
                         compressed->format += targetFormat;
+                    } else if (message.encoding == enc::MONO8) {
+                        ROS_DEBUG("Compressed Image Transport - Codec: jpg; trying turboojpeg");
+                        tjhandle tj_ = tjInitCompress();
+                        uint8_t* src = const_cast<uint8_t*>(message.data.data());
+                        unsigned char* jpegBuf = NULL;
+                        long unsigned int jpegSize = 0;
+                        int jpeg_quality = 95;
+                        for(std::size_t i = 0; i < params.size(); i += 2) {
+                            if(params[i] ==  cv::IMWRITE_JPEG_QUALITY)
+                              jpeg_quality = params[i+1];
+                        }
+                        if(0 == tjCompress2(tj_, src, message.width, message.step, message.height, TJPF_GRAY, &jpegBuf, &jpegSize, TJSAMP_GRAY, jpeg_quality, TJFLAG_FASTDCT)){
+                            tjDestroy(tj_);
+                            ROS_DEBUG("Compressed Image Transport - Codec: jpg; via TurboJPEG");
+                            compressed->data = std::vector<unsigned char>(jpegBuf, jpegBuf + jpegSize);
+                            return  compressed;
+                        }
+                        tjDestroy(tj_);
+                        ROS_DEBUG("Compressed Image Transport - Codec: jpg; via TurboJPEG failed. Falling back to opencv");
                     }
 
                     // OpenCV-ros bridge
