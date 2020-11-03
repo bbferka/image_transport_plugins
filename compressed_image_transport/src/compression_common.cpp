@@ -45,6 +45,7 @@ namespace enc = sensor_msgs::image_encodings;
 
 namespace compressed_image_transport {
 
+    //by xqms https://github.com/xqms/image_transport_plugins/tree/turbojpeg
     sensor_msgs::ImagePtr decompressJPEG(const std::vector<uint8_t>& data, const std::string& source_encoding, const std_msgs::Header& header)
     {
       tjhandle tj_ = tjInitDecompress();
