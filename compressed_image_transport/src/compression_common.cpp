@@ -258,9 +258,11 @@ namespace compressed_image_transport {
                             tjDestroy(tj_);
                             ROS_DEBUG("Compressed Image Transport - Codec: jpg; via TurboJPEG");
                             compressed->data = std::vector<unsigned char>(jpegBuf, jpegBuf + jpegSize);
+                            delete jpegBuf;
                             return  compressed;
                         }
                         tjDestroy(tj_);
+                        delete jpegBuf;
                         ROS_DEBUG("Compressed Image Transport - Codec: jpg; via TurboJPEG failed. Falling back to opencv");
                     }
 
