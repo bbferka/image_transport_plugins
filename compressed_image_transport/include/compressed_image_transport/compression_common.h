@@ -54,6 +54,7 @@ sensor_msgs::ImagePtr decompressJPEG(const std::vector<uint8_t>& data, const std
 // standadlone decoding function
 sensor_msgs::ImagePtr decodeCompressedImage(const sensor_msgs::CompressedImageConstPtr& image, int decode_flag);
 
+sensor_msgs::CompressedImagePtr compressJPEG(const sensor_msgs::Image &image, std::vector<int> params);
 
 /**
  * @brief encodeImage standadlone encoding function wrapping around cv::imencode for compressin sensor_msgs::Image messages

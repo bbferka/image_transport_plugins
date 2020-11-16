@@ -222,6 +222,70 @@ namespace compressed_image_transport {
         }
     }
 
+    sensor_msgs::CompressedImagePtr compressJPEG(const sensor_msgs::Image &image, std::vector<int> params){
+        int width, step, height, pixelFormat, jpegSubsamp;
+        boost::shared_ptr <sensor_msgs::CompressedImage> compressed(new sensor_msgs::CompressedImage);
+        compressed->header = image.header;
+        compressed->format = image.encoding;
+        compressed->format += "; jpeg compressed ";
+
+        width = image.width;
+        height = image.height;
+        step = image.step;
+        jpegSubsamp = TJSAMP_444;
+
+        tjhandle tj_ = tjInitCompress();
+        uint8_t* src = const_cast<uint8_t*>(image.data.data());
+        unsigned char* jpegBuf = NULL;
+        long unsigned int jpegSize = 0;
+        int jpeg_quality = 95;
+        for(std::size_t i = 0; i < params.size()-1; i += 2) {
+            if(params[i] ==  cv::IMWRITE_JPEG_QUALITY)
+              jpeg_quality = params[i+1];
+        }
+
+        if (image.encoding == enc::MONO8)
+        {
+          pixelFormat = TJPF_GRAY;
+          jpegSubsamp = TJSAMP_GRAY;
+        }
+        else if (image.encoding == enc::RGB8)
+        {
+          pixelFormat = TJPF_RGB;
+        }
+        else if (image.encoding == enc::BGR8)
+        {
+          pixelFormat = TJPF_BGR;
+        }
+        else if (image.encoding == enc::RGBA8)
+        {
+          pixelFormat = TJPF_RGBA;
+        }
+        else if (image.encoding == enc::BGRA8)
+        {
+          pixelFormat = TJPF_BGRA;
+        }
+        else
+        {
+          ROS_WARN_THROTTLE(10.0, "Encountered a source encoding that is not supported by TurboJPEG: '%s'", image.encoding.c_str());
+          tjDestroy(tj_);
+          delete jpegBuf;
+          return sensor_msgs::CompressedImagePtr();
+        }
+
+        if(0 == tjCompress2(tj_, src,width, step, height, pixelFormat, &jpegBuf, &jpegSize, jpegSubsamp, jpeg_quality, TJFLAG_FASTDCT)){
+            tjDestroy(tj_);
+            ROS_DEBUG("Compressed Image Transport - Codec: jpg; via TurboJPEG");
+            compressed->data = std::vector<unsigned char>(jpegBuf, jpegBuf + jpegSize);
+            delete jpegBuf;
+            return  compressed;
+        }
+        tjDestroy(tj_);
+        delete jpegBuf;
+        ROS_DEBUG("Compressed Image Transport - Codec: jpg; via TurboJPEG failed. Falling back to opencv");
+        return sensor_msgs::CompressedImagePtr();
+    }
+
     sensor_msgs::CompressedImagePtr encodeImage(const sensor_msgs::Image &message, compressionFormat encode_flag, std::vector<int> params) {
 
         boost::shared_ptr <sensor_msgs::CompressedImage> compressed(new sensor_msgs::CompressedImage);
@@ -238,35 +302,19 @@ namespace compressed_image_transport {
                 // Check input format
                 if ((bitDepth == 8) || (bitDepth == 16)) {
 
+                    // No conversion of color images to bgr8
+                    sensor_msgs::CompressedImagePtr encoded = compressJPEG(message, params);
+                    if (encoded){
+                        return encoded;
+                    }
+
                     // Target image format
                     std::string targetFormat;
                     if (enc::isColor(message.encoding)) {
                         // convert color images to BGR8 format
                         targetFormat = "bgr8";
                         compressed->format += targetFormat;
-                    } else if (message.encoding == enc::MONO8) {
-                        ROS_DEBUG("Compressed Image Transport - Codec: jpg; trying turboojpeg");
-                        tjhandle tj_ = tjInitCompress();
-                        uint8_t* src = const_cast<uint8_t*>(message.data.data());
-                        unsigned char* jpegBuf = NULL;
-                        long unsigned int jpegSize = 0;
-                        int jpeg_quality = 95;
-                        for(std::size_t i = 0; i < params.size(); i += 2) {
-                            if(params[i] ==  cv::IMWRITE_JPEG_QUALITY)
-                              jpeg_quality = params[i+1];
-                        }
-                        if(0 == tjCompress2(tj_, src, message.width, message.step, message.height, TJPF_GRAY, &jpegBuf, &jpegSize, TJSAMP_GRAY, jpeg_quality, TJFLAG_FASTDCT)){
-                            tjDestroy(tj_);
-                            ROS_DEBUG("Compressed Image Transport - Codec: jpg; via TurboJPEG");
-                            compressed->data = std::vector<unsigned char>(jpegBuf, jpegBuf + jpegSize);
-                            delete jpegBuf;
-                            return  compressed;
-                        }
-                        tjDestroy(tj_);
-                        delete jpegBuf;
-                        ROS_DEBUG("Compressed Image Transport - Codec: jpg; via TurboJPEG failed. Falling back to opencv");
                     }
-
                     // OpenCV-ros bridge
                     boost::shared_ptr<void> tracked_object;
                     cv_bridge::CvImageConstPtr cv_ptr = cv_bridge::toCvShare(message, tracked_object, targetFormat);
