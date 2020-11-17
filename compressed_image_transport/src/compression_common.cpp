@@ -227,7 +227,7 @@ namespace compressed_image_transport {
         boost::shared_ptr <sensor_msgs::CompressedImage> compressed(new sensor_msgs::CompressedImage);
         compressed->header = image.header;
         compressed->format = image.encoding;
-        compressed->format += "; jpeg compressed ";
+        compressed->format += "; jpeg compressed " + image.encoding;
 
         width = image.width;
         height = image.height;
