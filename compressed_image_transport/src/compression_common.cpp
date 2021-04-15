@@ -303,10 +303,10 @@ namespace compressed_image_transport {
                 if ((bitDepth == 8) || (bitDepth == 16)) {
 
                     // No conversion of color images to bgr8
-                    sensor_msgs::CompressedImagePtr encoded = compressJPEG(message, params);
-                    if (encoded){
-                        return encoded;
-                    }
+                    // sensor_msgs::CompressedImagePtr encoded = compressJPEG(message, params);
+                    // if (encoded){
+                    //     return encoded;
+                    // }
 
                     // Target image format
                     std::string targetFormat;
