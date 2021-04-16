@@ -47,9 +47,14 @@ enum compressionFormat
   UNDEFINED = -1, JPEG, PNG
 };
 
+// by xqms https://github.com/xqms/image_transport_plugins/tree/turbojpeg
+sensor_msgs::ImagePtr decompressJPEG(const std::vector<uint8_t>& data, const std::string&source_encoding, const std_msgs::Header& header);
+
+
 // standadlone decoding function
 sensor_msgs::ImagePtr decodeCompressedImage(const sensor_msgs::CompressedImageConstPtr& image, int decode_flag);
 
+sensor_msgs::CompressedImagePtr compressJPEG(const sensor_msgs::Image &image, std::vector<int> params);
 
 /**
  * @brief encodeImage standadlone encoding function wrapping around cv::imencode for compressin sensor_msgs::Image messages
